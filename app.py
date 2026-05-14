@@ -31,13 +31,12 @@ def generate():
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
 
-        # Вызываем модель gemini-1.5-flash (доступна на бесплатном тарифе)
+        # Обновленное имя модели для нового SDK google-genai
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash', 
             contents=prompt,
         )
 
-        # Извлекаем текст ответа
         result = response.text
 
         return jsonify({
