@@ -22,11 +22,6 @@ data = request.json
 prompt = data.get("prompt")
 
 ```
-    if not prompt:
-        return jsonify({
-            "error": "Prompt is required"
-        }), 400
-
     completion = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[
@@ -34,8 +29,7 @@ prompt = data.get("prompt")
                 "role": "user",
                 "content": prompt
             }
-        ],
-        temperature=0.3
+        ]
     )
 
     result = completion.choices[0].message.content
@@ -50,10 +44,5 @@ except Exception as e:
     }), 500
 ```
 
-@app.route("/[path:path](path:path)")
-def static_files(path):
-return send_from_directory("public", path)
-
 if **name** == "**main**":
-port = int(os.environ.get("PORT", 3000))
-app.run(host="0.0.0.0", port=port)
+app.run(host="0.0.0.0", port=3000)
