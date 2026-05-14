@@ -8,41 +8,40 @@ app = Flask(__name__, static_folder='public')
 CORS(app)
 
 client = OpenAI(
-api_key=os.getenv("OPENAI_API_KEY")
+    api_key=os.getenv("OPENAI_API_KEY")
 )
 
 @app.route("/")
 def index():
-return send_from_directory("public", "index.html")
+    # This needs to be indented by 4 spaces
+    return send_from_directory("public", "index.html")
 
 @app.route("/generate", methods=["POST"])
 def generate():
-try:
-data = request.json
-prompt = data.get("prompt")
+    try:
+        data = request.json
+        prompt = data.get("prompt")
 
-```
-    completion = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",  # Note: Standard OpenAI model name is gpt-4o-mini
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
 
-    result = completion.choices[0].message.content
+        result = completion.choices[0].message.content
 
-    return jsonify({
-        "result": result
-    })
+        return jsonify({
+            "result": result
+        })
 
-except Exception as e:
-    return jsonify({
-        "error": str(e)
-    }), 500
-```
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
 
-if **name** == "**main**":
-app.run(host="0.0.0.0", port=3000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000)
