@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 
 app = Flask(__name__, static_folder='public')
+
 CORS(app)
 
 client = OpenAI(
