@@ -1,19 +1,18 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from openai import OpenAI
+from google import genai
 import os
 
 app = Flask(__name__, static_folder='public')
 
 CORS(app)
 
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+# Инициализируем клиент Gemini. 
+# Он автоматически подтянет ключ из переменной окружения GEMINI_API_KEY
+client = genai.Client()
 
 @app.route("/")
 def index():
-    # This needs to be indented by 4 spaces
     return send_from_directory("public", "index.html")
 
 @app.route("/generate", methods=["POST"])
@@ -22,17 +21,17 @@ def generate():
         data = request.json
         prompt = data.get("prompt")
 
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",  # Note: Standard OpenAI model name is gpt-4o-mini
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+        if not prompt:
+            return jsonify({"error": "Prompt is required"}), 400
+
+        # Вызываем модель gemini-1.5-flash (оптимальная бесплатная модель)
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt,
         )
 
-        result = completion.choices[0].message.content
+        # Текст ответа лежит напрямую в свойстве .text
+        result = response.text
 
         return jsonify({
             "result": result
