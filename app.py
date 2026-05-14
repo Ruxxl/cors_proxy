@@ -3,50 +3,95 @@ from flask_cors import CORS
 from google import genai
 from dotenv import load_dotenv
 import os
+import requests
 
-# Загружаем переменные окружения из файла .env
+# load env
 load_dotenv()
 
 app = Flask(__name__, static_folder='public')
-
-# Включаем CORS для работы с фронтендом
 CORS(app)
 
-# Инициализируем клиент Gemini. 
-# Он автоматически подтянет ключ из переменной окружения GEMINI_API_KEY
+# Gemini client
 client = genai.Client()
 
+
+# =========================
+# FRONTEND
+# =========================
 @app.route("/")
 def index():
     return send_from_directory("public", "index.html")
 
+
+# =========================
+# GEMINI GENERATE
+# =========================
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
         data = request.json
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
-            
+
         prompt = data.get("prompt")
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
 
-        # Обновленное имя модели для нового SDK google-genai
         response = client.models.generate_content(
-            model='gemini-2.5-flash', 
+            model="gemini-2.5-flash",
             contents=prompt,
         )
 
-        result = response.text
-
         return jsonify({
-            "result": result
+            "result": response.text
         })
 
     except Exception as e:
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return jsonify({"error": str(e)}), 500
 
+
+# =========================
+# CONFLUENCE PROXY
+# =========================
+@app.route("/confluence", methods=["POST", "OPTIONS"])
+def confluence():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+
+    try:
+        data = request.json
+
+        url = data.get("url")
+        email = data.get("email")
+        token = data.get("token")
+        page_id = data.get("pageId")
+
+        if not all([url, email, token, page_id]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        api_url = f"{url}/wiki/rest/api/content/{page_id}?expand=body.storage"
+
+        response = requests.get(
+            api_url,
+            auth=(email, token),
+            headers={
+                "Accept": "application/json"
+            },
+            timeout=20
+        )
+
+        return jsonify({
+            "status": response.status_code,
+            "data": response.json()
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================
+# RUN SERVER
+# =========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3000)
+    port = int(os.environ.get("PORT", 3000))
+    app.run(host="0.0.0.0", port=port)
