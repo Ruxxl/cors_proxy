@@ -1,10 +1,15 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
+from dotenv import load_dotenv
 import os
+
+# Загружаем переменные окружения из файла .env
+load_dotenv()
 
 app = Flask(__name__, static_folder='public')
 
+# Включаем CORS для работы с фронтендом
 CORS(app)
 
 # Инициализируем клиент Gemini. 
@@ -19,18 +24,20 @@ def index():
 def generate():
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+            
         prompt = data.get("prompt")
-
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
 
-        # Вызываем модель gemini-1.5-flash (оптимальная бесплатная модель)
+        # Вызываем модель gemini-1.5-flash (доступна на бесплатном тарифе)
         response = client.models.generate_content(
             model='gemini-1.5-flash',
             contents=prompt,
         )
 
-        # Текст ответа лежит напрямую в свойстве .text
+        # Извлекаем текст ответа
         result = response.text
 
         return jsonify({
