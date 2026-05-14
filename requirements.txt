@@ -1,7 +1,4 @@
-aiohttp
-aiohttp_cors
-google-generativeai
-python-dotenv
-aiogram
-requests
-Brotli
+flask
+flask-cors
+openai
+gunicorn
