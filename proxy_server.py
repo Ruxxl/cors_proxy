@@ -39,12 +39,16 @@ async def proxy_handler(request):
     # Читаем тело оригинального запроса
     body = await request.read()
     
-    # Копируем заголовки от браузера (исключая Host, чтобы не ломать маршрутизацию)
+    # Копируем заголовки от браузера
     headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+    
+    # КРИТИЧЕСКИЙ МОМЕНТ: Удаляем просьбу о сжатии, 
+    # чтобы сервер прислал нам обычный JSON (plain text)
+    headers.pop("Accept-Encoding", None)
 
     try:
-        async with aiohttp.ClientSession() as session:
-            # Отправляем запрос на реальный целевой сервер
+        # Указываем aiohttp НЕ пытаться автоматически декодировать сжатие
+        async with aiohttp.ClientSession(auto_decompress=False) as session:
             async with session.request(
                 method=request.method,
                 url=target_url,
@@ -53,16 +57,16 @@ async def proxy_handler(request):
                 timeout=30
             ) as response:
                 
-                # Читаем ответ от целевого сервера
                 response_body = await response.read()
                 
-                # Формируем ответ обратно в браузер, примешивая CORS-заголовки
+                # Формируем заголовки ответа
                 proxy_response_headers = dict(response.headers)
                 proxy_response_headers.update(CORS_HEADERS)
                 
-                # Удаляем заголовок Content-Encoding, чтобы aiohttp не пытался сжать уже сжатое
+                # Удаляем заголовки, которые теперь неактуальны (так как мы получили сырые данные)
                 proxy_response_headers.pop("Content-Encoding", None)
                 proxy_response_headers.pop("Transfer-Encoding", None)
+                proxy_response_headers.pop("Content-Length", None) # Пусть aiohttp пересчитает сам
 
                 return web.Response(
                     body=response_body,
