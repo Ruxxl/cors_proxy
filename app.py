@@ -9,10 +9,31 @@ import requests
 load_dotenv()
 
 app = Flask(__name__, static_folder='public')
-CORS(app)
+
+# =========================
+# CORS — разрешаем все origins (GitHub Pages, localhost, etc.)
+# =========================
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
+
+# Дополнительно вручную добавляем заголовки для всех ответов
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
 # Gemini client
 client = genai.Client()
+
+
+# =========================
+# PREFLIGHT — обрабатываем OPTIONS для всех роутов
+# =========================
+@app.route("/<path:path>", methods=["OPTIONS"])
+@app.route("/", methods=["OPTIONS"])
+def options_handler(path=""):
+    return jsonify({}), 200
 
 
 # =========================
@@ -26,8 +47,11 @@ def index():
 # =========================
 # GEMINI GENERATE
 # =========================
-@app.route("/generate", methods=["POST"])
+@app.route("/generate", methods=["POST", "OPTIONS"])
 def generate():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+
     try:
         data = request.json
         if not data:
@@ -74,9 +98,7 @@ def confluence():
         response = requests.get(
             api_url,
             auth=(email, token),
-            headers={
-                "Accept": "application/json"
-            },
+            headers={"Accept": "application/json"},
             timeout=20
         )
 
