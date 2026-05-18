@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: isn-test-proxy
+    runtime: python
+    buildCommand: pip install flask flask-cors google-generativeai google-genai python-dotenv requests
+    startCommand: python app.py
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # задать вручную в Render Dashboard
+    # НЕТ allowedHosts — принимает запросы с любого домена
