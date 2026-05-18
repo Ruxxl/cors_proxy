@@ -1,39 +1,34 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
 from google import genai
 from dotenv import load_dotenv
 import os
 import requests
 
-# load env
 load_dotenv()
 
 app = Flask(__name__, static_folder='public')
 
-# =========================
-# CORS — разрешаем все origins (GitHub Pages, localhost, etc.)
-# =========================
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
+# Разрешаем ВСЕ origins явно
+CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "OPTIONS"])
 
-# Дополнительно вручную добавляем заголовки для всех ответов
+client = genai.Client()
+
+
+def cors_response(data, status=200):
+    resp = make_response(jsonify(data), status)
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return resp
+
+
 @app.after_request
-def add_cors_headers(response):
+def inject_cors(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
-
-# Gemini client
-client = genai.Client()
-
-
-# =========================
-# PREFLIGHT — обрабатываем OPTIONS для всех роутов
-# =========================
-@app.route("/<path:path>", methods=["OPTIONS"])
-@app.route("/", methods=["OPTIONS"])
-def options_handler(path=""):
-    return jsonify({}), 200
 
 
 # =========================
@@ -50,28 +45,26 @@ def index():
 @app.route("/generate", methods=["POST", "OPTIONS"])
 def generate():
     if request.method == "OPTIONS":
-        return jsonify({}), 200
+        return cors_response({})
 
     try:
         data = request.json
         if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
+            return cors_response({"error": "No JSON data provided"}, 400)
 
         prompt = data.get("prompt")
         if not prompt:
-            return jsonify({"error": "Prompt is required"}), 400
+            return cors_response({"error": "Prompt is required"}, 400)
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
         )
 
-        return jsonify({
-            "result": response.text
-        })
+        return cors_response({"result": response.text})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return cors_response({"error": str(e)}, 500)
 
 
 # =========================
@@ -80,18 +73,17 @@ def generate():
 @app.route("/confluence", methods=["POST", "OPTIONS"])
 def confluence():
     if request.method == "OPTIONS":
-        return jsonify({}), 200
+        return cors_response({})
 
     try:
         data = request.json
-
         url = data.get("url")
         email = data.get("email")
         token = data.get("token")
         page_id = data.get("pageId")
 
         if not all([url, email, token, page_id]):
-            return jsonify({"error": "Missing required fields"}), 400
+            return cors_response({"error": "Missing required fields"}, 400)
 
         api_url = f"{url}/wiki/rest/api/content/{page_id}?expand=body.storage"
 
@@ -102,13 +94,10 @@ def confluence():
             timeout=20
         )
 
-        return jsonify({
-            "status": response.status_code,
-            "data": response.json()
-        })
+        return cors_response({"status": response.status_code, "data": response.json()})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return cors_response({"error": str(e)}, 500)
 
 
 # =========================
