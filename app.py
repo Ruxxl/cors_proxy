@@ -9,7 +9,7 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='public')
 
-# Разрешаем ВСЕ origins явно
+
 CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "OPTIONS"])
 
 client = genai.Client()
@@ -31,17 +31,10 @@ def inject_cors(response):
     return response
 
 
-# =========================
-# FRONTEND
-# =========================
 @app.route("/")
 def index():
     return send_from_directory("public", "index.html")
 
-
-# =========================
-# GEMINI GENERATE
-# =========================
 @app.route("/generate", methods=["POST", "OPTIONS"])
 def generate():
     if request.method == "OPTIONS":
@@ -67,9 +60,6 @@ def generate():
         return cors_response({"error": str(e)}, 500)
 
 
-# =========================
-# CONFLUENCE PROXY
-# =========================
 @app.route("/confluence", methods=["POST", "OPTIONS"])
 def confluence():
     if request.method == "OPTIONS":
