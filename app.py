@@ -15,6 +15,12 @@ CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=
 
 client = genai.Client()
 
+# Jira credentials from environment
+JIRA_URL   = os.environ.get("JIRA_URL",   "https://mechtamarket.atlassian.net")
+JIRA_EMAIL = os.environ.get("JIRA_EMAIL", "")
+JIRA_TOKEN = os.environ.get("JIRA_TOKEN", "")
+JIRA_PROJECT = os.environ.get("JIRA_PROJECT", "AS")
+
 
 def cors_response(data, status=200):
     resp = make_response(jsonify(data), status)
@@ -109,31 +115,31 @@ def jira_create_subtask():
     if request.method == "OPTIONS":
         return cors_response({})
 
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы в переменных окружения"}, 500)
+
     try:
-        data = request.json
-        url     = data.get("url")
-        email   = data.get("email")
-        token   = data.get("token")
-        parent  = data.get("parentKey")   # e.g. "AS-123"
+        data    = request.json
+        parent  = data.get("parentKey")
         summary = data.get("summary")
-        project = data.get("project", "AS")
+        project = data.get("project", JIRA_PROJECT)
 
-        if not all([url, email, token, parent, summary]):
-            return cors_response({"error": "Missing required fields"}, 400)
+        if not all([parent, summary]):
+            return cors_response({"error": "parentKey и summary обязательны"}, 400)
 
-        api_url = f"{url}/rest/api/2/issue"
+        api_url = f"{JIRA_URL}/rest/api/2/issue"
         payload = {
             "fields": {
-                "project": {"key": project},
-                "parent":  {"key": parent},
-                "summary": summary,
+                "project":   {"key": project},
+                "parent":    {"key": parent},
+                "summary":   summary,
                 "issuetype": {"name": "Sub-task"}
             }
         }
 
         resp = requests.post(
             api_url,
-            auth=(email, token),
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
             headers={"Accept": "application/json", "Content-Type": "application/json"},
             json=payload,
             timeout=20
@@ -153,21 +159,21 @@ def jira_upload_attachment():
     if request.method == "OPTIONS":
         return cors_response({})
 
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы в переменных окружения"}, 500)
+
     try:
         issue_key = request.form.get("issueKey")
-        url       = request.form.get("url")
-        email     = request.form.get("email")
-        token     = request.form.get("token")
         file      = request.files.get("file")
 
-        if not all([issue_key, url, email, token, file]):
-            return cors_response({"error": "Missing required fields"}, 400)
+        if not all([issue_key, file]):
+            return cors_response({"error": "issueKey и file обязательны"}, 400)
 
-        api_url = f"{url}/rest/api/2/issue/{issue_key}/attachments"
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}/attachments"
 
         resp = requests.post(
             api_url,
-            auth=(email, token),
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
             headers={
                 "Accept": "application/json",
                 "X-Atlassian-Token": "no-check"
