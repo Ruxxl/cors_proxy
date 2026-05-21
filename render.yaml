@@ -7,4 +7,12 @@ services:
     envVars:
       - key: GEMINI_API_KEY
         sync: false   # задать вручную в Render Dashboard
+      - key: JIRA_URL
+        value: https://mechtamarket.atlassian.net
+      - key: JIRA_EMAIL
+        sync: false   # задать вручную в Render Dashboard
+      - key: JIRA_TOKEN
+        sync: false   # задать вручную в Render Dashboard
+      - key: JIRA_PROJECT
+        value: AS
     # НЕТ allowedHosts — принимает запросы с любого домена
