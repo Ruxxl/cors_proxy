@@ -4,12 +4,13 @@ from google import genai
 from dotenv import load_dotenv
 import os
 import requests
+import base64
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='public')
 
-
+# Разрешаем ВСЕ origins явно
 CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "OPTIONS"])
 
 client = genai.Client()
@@ -31,10 +32,17 @@ def inject_cors(response):
     return response
 
 
+# =========================
+# FRONTEND
+# =========================
 @app.route("/")
 def index():
     return send_from_directory("public", "index.html")
 
+
+# =========================
+# GEMINI GENERATE
+# =========================
 @app.route("/generate", methods=["POST", "OPTIONS"])
 def generate():
     if request.method == "OPTIONS":
@@ -60,6 +68,9 @@ def generate():
         return cors_response({"error": str(e)}, 500)
 
 
+# =========================
+# CONFLUENCE PROXY
+# =========================
 @app.route("/confluence", methods=["POST", "OPTIONS"])
 def confluence():
     if request.method == "OPTIONS":
@@ -85,6 +96,87 @@ def confluence():
         )
 
         return cors_response({"status": response.status_code, "data": response.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA CREATE SUBTASK
+# =========================
+@app.route("/jira/subtask", methods=["POST", "OPTIONS"])
+def jira_create_subtask():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    try:
+        data = request.json
+        url     = data.get("url")
+        email   = data.get("email")
+        token   = data.get("token")
+        parent  = data.get("parentKey")   # e.g. "AS-123"
+        summary = data.get("summary")
+        project = data.get("project", "AS")
+
+        if not all([url, email, token, parent, summary]):
+            return cors_response({"error": "Missing required fields"}, 400)
+
+        api_url = f"{url}/rest/api/2/issue"
+        payload = {
+            "fields": {
+                "project": {"key": project},
+                "parent":  {"key": parent},
+                "summary": summary,
+                "issuetype": {"name": "Sub-task"}
+            }
+        }
+
+        resp = requests.post(
+            api_url,
+            auth=(email, token),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json=payload,
+            timeout=20
+        )
+
+        return cors_response({"status": resp.status_code, "data": resp.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA UPLOAD ATTACHMENT
+# =========================
+@app.route("/jira/attachment", methods=["POST", "OPTIONS"])
+def jira_upload_attachment():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    try:
+        issue_key = request.form.get("issueKey")
+        url       = request.form.get("url")
+        email     = request.form.get("email")
+        token     = request.form.get("token")
+        file      = request.files.get("file")
+
+        if not all([issue_key, url, email, token, file]):
+            return cors_response({"error": "Missing required fields"}, 400)
+
+        api_url = f"{url}/rest/api/2/issue/{issue_key}/attachments"
+
+        resp = requests.post(
+            api_url,
+            auth=(email, token),
+            headers={
+                "Accept": "application/json",
+                "X-Atlassian-Token": "no-check"
+            },
+            files={"file": (file.filename, file.stream, file.content_type)},
+            timeout=30
+        )
+
+        return cors_response({"status": resp.status_code, "data": resp.json()})
 
     except Exception as e:
         return cors_response({"error": str(e)}, 500)
