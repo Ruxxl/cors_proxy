@@ -133,7 +133,7 @@ def jira_create_subtask():
                 "project":   {"key": project},
                 "parent":    {"key": parent},
                 "summary":   summary,
-                "issuetype": {"name": "Sub-task"}
+                "issuetype": {"name": "Подзадача"}
             }
         }
 
