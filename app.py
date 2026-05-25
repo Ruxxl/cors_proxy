@@ -108,6 +108,73 @@ def confluence():
 
 
 # =========================
+# JIRA GET VERSIONS
+# =========================
+@app.route("/jira/versions", methods=["POST", "OPTIONS"])
+def jira_get_versions():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы в переменных окружения"}, 500)
+
+    try:
+        data    = request.json
+        project = data.get("project", JIRA_PROJECT)
+
+        api_url = f"{JIRA_URL}/rest/api/2/project/{project}/versions"
+
+        resp = requests.get(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json"},
+            timeout=20
+        )
+
+        return cors_response({"status": resp.status_code, "data": resp.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA SEARCH ISSUES
+# =========================
+@app.route("/jira/issues", methods=["POST", "OPTIONS"])
+def jira_search_issues():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы в переменных окружения"}, 500)
+
+    try:
+        data    = request.json
+        jql     = data.get("jql")
+        max_results = data.get("maxResults", 50)
+        fields  = data.get("fields", "summary,status,issuetype,priority,description,subtasks")
+
+        if not jql:
+            return cors_response({"error": "jql обязателен"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/search"
+        params  = {"jql": jql, "maxResults": max_results, "fields": fields}
+
+        resp = requests.get(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json"},
+            params=params,
+            timeout=20
+        )
+
+        return cors_response({"status": resp.status_code, "data": resp.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
 # JIRA CREATE SUBTASK
 # =========================
 @app.route("/jira/subtask", methods=["POST", "OPTIONS"])
