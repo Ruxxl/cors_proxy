@@ -157,7 +157,7 @@ def jira_search_issues():
         if not jql:
             return cors_response({"error": "jql обязателен"}, 400)
 
-        api_url = f"{JIRA_URL}/rest/api/2/search"
+        api_url = f"{JIRA_URL}/rest/api/3/search/jql"
         params  = {"jql": jql, "maxResults": max_results, "fields": fields}
 
         resp = requests.get(
