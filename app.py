@@ -220,6 +220,77 @@ def jira_create_subtask():
 
 
 # =========================
+# JIRA UPDATE ISSUE
+# =========================
+@app.route("/jira/update", methods=["POST", "OPTIONS"])
+def jira_update_issue():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы"}, 500)
+
+    try:
+        data      = request.json
+        issue_key = data.get("issueKey")
+        fields    = data.get("fields", {})
+
+        if not issue_key:
+            return cors_response({"error": "issueKey обязателен"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}"
+        payload = {"fields": fields}
+
+        resp = requests.put(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json=payload,
+            timeout=20
+        )
+
+        if resp.status_code == 204:
+            return cors_response({"status": 204, "ok": True})
+        return cors_response({"status": resp.status_code, "data": resp.text}, resp.status_code)
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA GET ISSUE
+# =========================
+@app.route("/jira/issue", methods=["POST", "OPTIONS"])
+def jira_get_issue():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы"}, 500)
+
+    try:
+        data      = request.json
+        issue_key = data.get("issueKey")
+
+        if not issue_key:
+            return cors_response({"error": "issueKey обязателен"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}?fields=summary,description,status,priority,issuetype,subtasks,attachment,comment"
+
+        resp = requests.get(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json"},
+            timeout=20
+        )
+
+        return cors_response({"status": resp.status_code, "data": resp.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
 # JIRA DELETE ISSUE
 # =========================
 @app.route("/jira/delete", methods=["POST", "OPTIONS"])
