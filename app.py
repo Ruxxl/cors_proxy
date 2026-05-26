@@ -218,6 +218,104 @@ def jira_create_subtask():
         return cors_response({"error": str(e)}, 500)
 
 
+
+# =========================
+# JIRA DELETE ISSUE
+# =========================
+@app.route("/jira/delete", methods=["POST", "OPTIONS"])
+def jira_delete_issue():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы"}, 500)
+
+    try:
+        data      = request.json
+        issue_key = data.get("issueKey")
+        if not issue_key:
+            return cors_response({"error": "issueKey обязателен"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}"
+        resp = requests.delete(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json"},
+            timeout=20
+        )
+        if resp.status_code == 204:
+            return cors_response({"status": 204, "ok": True})
+        return cors_response({"status": resp.status_code, "data": resp.text}, resp.status_code)
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA GET TRANSITIONS
+# =========================
+@app.route("/jira/transitions", methods=["POST", "OPTIONS"])
+def jira_get_transitions():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы"}, 500)
+
+    try:
+        data      = request.json
+        issue_key = data.get("issueKey")
+        if not issue_key:
+            return cors_response({"error": "issueKey обязателен"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}/transitions"
+        resp = requests.get(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json"},
+            timeout=20
+        )
+        return cors_response({"status": resp.status_code, "data": resp.json()})
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
+# =========================
+# JIRA DO TRANSITION
+# =========================
+@app.route("/jira/transition", methods=["POST", "OPTIONS"])
+def jira_do_transition():
+    if request.method == "OPTIONS":
+        return cors_response({})
+
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        return cors_response({"error": "JIRA_EMAIL / JIRA_TOKEN не заданы"}, 500)
+
+    try:
+        data          = request.json
+        issue_key     = data.get("issueKey")
+        transition_id = data.get("transitionId")
+        if not all([issue_key, transition_id]):
+            return cors_response({"error": "issueKey и transitionId обязательны"}, 400)
+
+        api_url = f"{JIRA_URL}/rest/api/2/issue/{issue_key}/transitions"
+        payload = {"transition": {"id": str(transition_id)}}
+        resp = requests.post(
+            api_url,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json=payload,
+            timeout=20
+        )
+        if resp.status_code == 204:
+            return cors_response({"status": 204, "ok": True})
+        return cors_response({"status": resp.status_code, "data": resp.text}, resp.status_code)
+
+    except Exception as e:
+        return cors_response({"error": str(e)}, 500)
+
+
 # =========================
 # JIRA UPLOAD ATTACHMENT
 # =========================
